@@ -1,5 +1,7 @@
 package com.hendisantika.springboot3jwtsecuritysample.service;
 
+import com.hendisantika.springboot3jwtsecuritysample.entity.Token;
+import com.hendisantika.springboot3jwtsecuritysample.entity.TokenType;
 import com.hendisantika.springboot3jwtsecuritysample.entity.User;
 import com.hendisantika.springboot3jwtsecuritysample.exception.UserNotFoundException;
 import com.hendisantika.springboot3jwtsecuritysample.repository.TokenRepository;
@@ -72,5 +74,17 @@ public class AuthenticationService {
                 .accessToken(jwtToken)
                 .refreshToken(refreshToken)
                 .build();
+    }
+
+    private void saveUserToken(User user, String jwtToken) {
+        Token token = Token.builder()
+                .user(user)
+                .token(jwtToken)
+                .tokenType(TokenType.BEARER)
+                .isExpired(false)
+                .isRevoked(false)
+                .build();
+
+        tokenRepository.save(token);
     }
 }
