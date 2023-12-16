@@ -49,4 +49,8 @@ public class ManagementController {
         return "PUT:: management controller";
     }
 
+    @DeleteMapping
+    public String delete() {
+        return "DELETE:: management controller";
+    }
 }
