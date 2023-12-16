@@ -1,7 +1,10 @@
 package com.hendisantika.springboot3jwtsecuritysample.service;
 
+import com.hendisantika.springboot3jwtsecuritysample.entity.User;
 import com.hendisantika.springboot3jwtsecuritysample.repository.TokenRepository;
 import com.hendisantika.springboot3jwtsecuritysample.repository.UserRepository;
+import com.hendisantika.springboot3jwtsecuritysample.request.RegisterRequest;
+import com.hendisantika.springboot3jwtsecuritysample.response.AuthenticationResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,4 +29,24 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+
+    public AuthenticationResponse register(RegisterRequest request) {
+        User user = User.builder()
+                .firstname(request.getFirstname())
+                .lastname(request.getLastname())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(request.getRole())
+                .build();
+
+        User savedUser = userRepository.save(user);
+        String jwtToken = jwtService.generateToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+        saveUserToken(savedUser, jwtToken);
+
+        return AuthenticationResponse.builder()
+                .accessToken(jwtToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
 }
