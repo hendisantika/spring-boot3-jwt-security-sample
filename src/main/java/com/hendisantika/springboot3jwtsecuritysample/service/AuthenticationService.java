@@ -3,6 +3,7 @@ package com.hendisantika.springboot3jwtsecuritysample.service;
 import com.hendisantika.springboot3jwtsecuritysample.entity.Token;
 import com.hendisantika.springboot3jwtsecuritysample.entity.TokenType;
 import com.hendisantika.springboot3jwtsecuritysample.entity.User;
+import com.hendisantika.springboot3jwtsecuritysample.exception.TokenNotFoundException;
 import com.hendisantika.springboot3jwtsecuritysample.exception.UserNotFoundException;
 import com.hendisantika.springboot3jwtsecuritysample.repository.TokenRepository;
 import com.hendisantika.springboot3jwtsecuritysample.repository.UserRepository;
@@ -14,6 +15,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * Created by IntelliJ IDEA.
@@ -86,5 +89,18 @@ public class AuthenticationService {
                 .build();
 
         tokenRepository.save(token);
+    }
+
+    private void revokeAllUserTokens(User user) {
+        List<Token> allValidTokensByUser = tokenRepository.findAllValidTokensByUser(user.getId());
+
+        if (allValidTokensByUser.isEmpty())
+            throw new TokenNotFoundException("Tokens not found");
+
+        allValidTokensByUser.forEach(token -> {
+            token.setIsExpired(true);
+            token.setIsRevoked(true);
+        });
+        tokenRepository.saveAll(allValidTokensByUser);
     }
 }
