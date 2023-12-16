@@ -1,12 +1,15 @@
 package com.hendisantika.springboot3jwtsecuritysample.service;
 
 import com.hendisantika.springboot3jwtsecuritysample.entity.User;
+import com.hendisantika.springboot3jwtsecuritysample.exception.UserNotFoundException;
 import com.hendisantika.springboot3jwtsecuritysample.repository.TokenRepository;
 import com.hendisantika.springboot3jwtsecuritysample.repository.UserRepository;
+import com.hendisantika.springboot3jwtsecuritysample.request.AuthenticationRequest;
 import com.hendisantika.springboot3jwtsecuritysample.request.RegisterRequest;
 import com.hendisantika.springboot3jwtsecuritysample.response.AuthenticationResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -43,6 +46,27 @@ public class AuthenticationService {
         String jwtToken = jwtService.generateToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
         saveUserToken(savedUser, jwtToken);
+
+        return AuthenticationResponse.builder()
+                .accessToken(jwtToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+    public AuthenticationResponse authenticate(AuthenticationRequest request) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword()
+                )
+        );
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UserNotFoundException("User not found with " + request.getEmail()));
+
+        String jwtToken = jwtService.generateToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+        revokeAllUserTokens(user);
+        saveUserToken(user, jwtToken);
 
         return AuthenticationResponse.builder()
                 .accessToken(jwtToken)
