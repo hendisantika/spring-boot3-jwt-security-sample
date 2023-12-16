@@ -37,4 +37,11 @@ public class AdminController {
     public String put() {
         return "PUT:: admin controller";
     }
+
+    @DeleteMapping
+    @PreAuthorize("hasAuthority('admin:delete')")
+    @Hidden
+    public String delete() {
+        return "DELETE:: admin controller";
+    }
 }
