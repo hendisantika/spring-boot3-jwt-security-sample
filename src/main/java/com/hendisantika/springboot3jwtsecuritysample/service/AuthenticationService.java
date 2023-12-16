@@ -1,8 +1,10 @@
 package com.hendisantika.springboot3jwtsecuritysample.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hendisantika.springboot3jwtsecuritysample.entity.Token;
 import com.hendisantika.springboot3jwtsecuritysample.entity.TokenType;
 import com.hendisantika.springboot3jwtsecuritysample.entity.User;
+import com.hendisantika.springboot3jwtsecuritysample.exception.InvalidTokenException;
 import com.hendisantika.springboot3jwtsecuritysample.exception.TokenNotFoundException;
 import com.hendisantika.springboot3jwtsecuritysample.exception.UserNotFoundException;
 import com.hendisantika.springboot3jwtsecuritysample.repository.TokenRepository;
@@ -10,12 +12,16 @@ import com.hendisantika.springboot3jwtsecuritysample.repository.UserRepository;
 import com.hendisantika.springboot3jwtsecuritysample.request.AuthenticationRequest;
 import com.hendisantika.springboot3jwtsecuritysample.request.RegisterRequest;
 import com.hendisantika.springboot3jwtsecuritysample.response.AuthenticationResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -102,5 +108,36 @@ public class AuthenticationService {
             token.setIsRevoked(true);
         });
         tokenRepository.saveAll(allValidTokensByUser);
+    }
+
+    public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        final String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+
+        if (authorization == null) {
+            throw new InvalidTokenException("Token is missing");
+        } else if (!authorization.startsWith("Bearer ")) {
+            throw new InvalidTokenException("Token is invalid");
+        }
+
+        final String refreshToken = authorization.substring(7);
+        final String userEmail = jwtService.extractUsername(refreshToken);
+
+        if (userEmail != null) {
+            User user = this.userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new UserNotFoundException("User not found with " + userEmail));
+
+            if (jwtService.isTokenValid(refreshToken, user)) {
+                String accessToken = jwtService.generateToken(user);
+                revokeAllUserTokens(user);
+                saveUserToken(user, accessToken);
+
+                AuthenticationResponse authenticationResponse = AuthenticationResponse.builder()
+                        .accessToken(accessToken)
+                        .refreshToken(refreshToken)
+                        .build();
+
+                new ObjectMapper().writeValue(response.getOutputStream(), authenticationResponse);
+            }
+        }
     }
 }
